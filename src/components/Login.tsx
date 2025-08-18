@@ -4,22 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plane } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const { signIn } = useAuth();
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // TODO: Implementar autenticación con Supabase
-    console.log("Login attempt:", { email, password });
+    const { error } = await signIn(email, password);
     
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    if (error) {
+      toast({
+        title: "Error de autenticación",
+        description: error,
+        variant: "destructive",
+      });
+    }
+    
+    setLoading(false);
   };
 
   return (
