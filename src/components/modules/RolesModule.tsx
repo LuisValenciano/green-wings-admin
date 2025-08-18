@@ -7,18 +7,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { avionService, type Avion } from '@/services/avion';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { rolesService, type Rol } from '@/services/roles';
+import { Plus, Edit, Trash2, Search, Shield } from 'lucide-react';
 
-export default function AvionModule() {
-  const [aviones, setAviones] = useState<Avion[]>([]);
+export default function RolesModule() {
+  const [roles, setRoles] = useState<Rol[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAvion, setEditingAvion] = useState<Avion | null>(null);
+  const [editingRol, setEditingRol] = useState<Rol | null>(null);
   const [formData, setFormData] = useState({
-    modelo: '',
-    capacidad: ''
+    nombre_rol: ''
   });
   const [formLoading, setFormLoading] = useState(false);
   
@@ -26,18 +25,18 @@ export default function AvionModule() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadAviones();
+    loadRoles();
   }, []);
 
-  const loadAviones = async () => {
+  const loadRoles = async () => {
     try {
       setLoading(true);
-      const data = await avionService.list();
-      setAviones(data);
+      const data = await rolesService.list();
+      setRoles(data);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al cargar los aviones",
+        description: "Error al cargar los roles",
         variant: "destructive",
       });
     } finally {
@@ -49,11 +48,10 @@ export default function AvionModule() {
     e.preventDefault();
     if (!user) return;
 
-    const capacidad = parseInt(formData.capacidad);
-    if (isNaN(capacidad) || capacidad <= 0) {
+    if (!formData.nombre_rol.trim()) {
       toast({
         title: "Error",
-        description: "La capacidad debe ser un número mayor a 0",
+        description: "El nombre del rol es obligatorio",
         variant: "destructive",
       });
       return;
@@ -62,35 +60,33 @@ export default function AvionModule() {
     try {
       setFormLoading(true);
       
-      if (editingAvion) {
-        await avionService.update(editingAvion.id_avion!, {
-          modelo: formData.modelo,
-          capacidad
+      if (editingRol) {
+        await rolesService.update(editingRol.id_rol!, {
+          nombre_rol: formData.nombre_rol.trim()
         }, user.id_usuario);
         
         toast({
           title: "Éxito",
-          description: "Avión actualizado correctamente",
+          description: "Rol actualizado correctamente",
         });
       } else {
-        await avionService.create({
-          modelo: formData.modelo,
-          capacidad
+        await rolesService.create({
+          nombre_rol: formData.nombre_rol.trim()
         }, user.id_usuario);
         
         toast({
           title: "Éxito",
-          description: "Avión creado correctamente",
+          description: "Rol creado correctamente",
         });
       }
 
-      await loadAviones();
+      await loadRoles();
       resetForm();
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Error al guardar el avión",
+        description: error.message || "Error al guardar el rol",
         variant: "destructive",
       });
     } finally {
@@ -98,36 +94,35 @@ export default function AvionModule() {
     }
   };
 
-  const handleDelete = async (avion: Avion) => {
+  const handleDelete = async (rol: Rol) => {
     if (!user) return;
 
     try {
-      await avionService.remove(avion.id_avion!, user.id_usuario);
-      await loadAviones();
+      await rolesService.remove(rol.id_rol!, user.id_usuario);
+      await loadRoles();
       
       toast({
         title: "Éxito",
-        description: "Avión eliminado correctamente",
+        description: "Rol eliminado correctamente",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al eliminar el avión",
+        description: "Error al eliminar el rol",
         variant: "destructive",
       });
     }
   };
 
   const resetForm = () => {
-    setFormData({ modelo: '', capacidad: '' });
-    setEditingAvion(null);
+    setFormData({ nombre_rol: '' });
+    setEditingRol(null);
   };
 
-  const openEditDialog = (avion: Avion) => {
-    setEditingAvion(avion);
+  const openEditDialog = (rol: Rol) => {
+    setEditingRol(rol);
     setFormData({
-      modelo: avion.modelo,
-      capacidad: avion.capacidad.toString()
+      nombre_rol: rol.nombre_rol
     });
     setIsDialogOpen(true);
   };
@@ -137,9 +132,8 @@ export default function AvionModule() {
     setIsDialogOpen(true);
   };
 
-  const filteredAviones = aviones.filter(avion =>
-    avion.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avion.capacidad.toString().includes(searchTerm)
+  const filteredRoles = roles.filter(rol =>
+    rol.nombre_rol.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -154,9 +148,9 @@ export default function AvionModule() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Aviones</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Roles</h1>
           <p className="text-gray-600">
-            Administra la flota de aviones de GreenAirways
+            Administra los roles del sistema de GreenAirways
           </p>
         </div>
         
@@ -164,37 +158,23 @@ export default function AvionModule() {
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog} className="bg-green-600 hover:bg-green-700">
               <Plus className="w-4 h-4 mr-2" />
-              Nuevo Avión
+              Nuevo Rol
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingAvion ? 'Editar Avión' : 'Nuevo Avión'}
+                {editingRol ? 'Editar Rol' : 'Nuevo Rol'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="modelo" className="text-gray-700">Modelo</Label>
+                <Label htmlFor="nombre_rol" className="text-gray-700">Nombre del rol *</Label>
                 <Input
-                  id="modelo"
-                  value={formData.modelo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, modelo: e.target.value }))}
-                  placeholder="Ej: Boeing 737"
-                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="capacidad" className="text-gray-700">Capacidad (pasajeros)</Label>
-                <Input
-                  id="capacidad"
-                  type="number"
-                  min="1"
-                  value={formData.capacidad}
-                  onChange={(e) => setFormData(prev => ({ ...prev, capacidad: e.target.value }))}
-                  placeholder="Ej: 180"
+                  id="nombre_rol"
+                  value={formData.nombre_rol}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nombre_rol: e.target.value }))}
+                  placeholder="Ej: Administrador"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   required
                 />
@@ -210,7 +190,7 @@ export default function AvionModule() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={formLoading} className="bg-green-600 hover:bg-green-700">
-                  {formLoading ? 'Guardando...' : (editingAvion ? 'Actualizar' : 'Crear')}
+                  {formLoading ? 'Guardando...' : (editingRol ? 'Actualizar' : 'Crear')}
                 </Button>
               </div>
             </form>
@@ -221,13 +201,13 @@ export default function AvionModule() {
       {/* Búsqueda */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-gray-900">Buscar Aviones</CardTitle>
+          <CardTitle className="text-gray-900">Buscar Roles</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Buscar por modelo o capacidad..."
+              placeholder="Buscar por nombre del rol..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
@@ -236,15 +216,15 @@ export default function AvionModule() {
         </CardContent>
       </Card>
 
-      {/* Lista de aviones */}
+      {/* Lista de roles */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-gray-900">Lista de Aviones ({filteredAviones.length})</CardTitle>
+          <CardTitle className="text-gray-900">Lista de Roles ({filteredRoles.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredAviones.length === 0 ? (
+          {filteredRoles.length === 0 ? (
             <p className="text-center text-gray-500 py-8">
-              {searchTerm ? 'No se encontraron aviones con ese criterio' : 'No hay aviones registrados'}
+              {searchTerm ? 'No se encontraron roles con ese criterio' : 'No hay roles registrados'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -252,23 +232,21 @@ export default function AvionModule() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-gray-700 font-medium">ID</th>
-                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Modelo</th>
-                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Capacidad</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Nombre del Rol</th>
                     <th className="text-right py-3 px-4 text-gray-700 font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAviones.map((avion) => (
-                    <tr key={avion.id_avion} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 font-mono text-gray-600">{avion.id_avion}</td>
-                      <td className="py-3 px-4 font-medium text-gray-900">{avion.modelo}</td>
-                      <td className="py-3 px-4 text-gray-700">{avion.capacidad} pasajeros</td>
+                  {filteredRoles.map((rol) => (
+                    <tr key={rol.id_rol} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-mono text-gray-600">{rol.id_rol}</td>
+                      <td className="py-3 px-4 font-medium text-gray-900">{rol.nombre_rol}</td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openEditDialog(avion)}
+                            onClick={() => openEditDialog(rol)}
                             className="border-gray-300 hover:bg-green-50 hover:border-green-300"
                           >
                             <Edit className="w-4 h-4" />
@@ -282,15 +260,15 @@ export default function AvionModule() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar avión?</AlertDialogTitle>
+                                <AlertDialogTitle>¿Eliminar rol?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta acción no se puede deshacer. Se eliminará permanentemente el avión "{avion.modelo}".
+                                  Esta acción no se puede deshacer. Se eliminará permanentemente el rol "{rol.nombre_rol}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDelete(avion)}
+                                  onClick={() => handleDelete(rol)}
                                   className="bg-red-600 text-white hover:bg-red-700"
                                 >
                                   Eliminar

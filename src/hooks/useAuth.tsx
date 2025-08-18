@@ -1,139 +1,96 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-interface UserSystemData {
+export type GAUser = {
   id_usuario: number;
   nombre_usuario: string;
-  rol: number;
+  rol: number;          // 1 = Admin
   correo: string;
-}
+};
 
-interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  userSystem: UserSystemData | null;
+type Ctx = {
+  user: GAUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-}
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<Ctx>({
+  user: null, loading: true,
+  signIn: async () => ({ error: null }),
+  signOut: async () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [userSystem, setUserSystem] = useState<UserSystemData | null>(null);
+  const [user, setUser] = useState<GAUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user system data after auth
-          setTimeout(async () => {
-            await fetchUserSystemData(session.user.email!);
-          }, 0);
-        } else {
-          setUserSystem(null);
-        }
-        setLoading(false);
+    // restaurar nuestra caché
+    const raw = localStorage.getItem("ga_user");
+    if (raw) {
+      try {
+        const userData = JSON.parse(raw);
+        setUser(userData);
+      } catch (error) {
+        localStorage.removeItem("ga_user");
       }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserSystemData(session.user.email!);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserSystemData = async (email: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('usuario_sistema')
-        .select('*')
-        .eq('correo', email)
-        .single();
-
-      if (error || !data) {
-        toast({
-          title: "Acceso denegado",
-          description: "Usuario no autorizado en GreenAirways",
-          variant: "destructive",
-        });
-        await signOut();
-        return;
-      }
-
-      // Verificar que el usuario sea Administrador (rol = 1)
-      if (data.rol !== 1) {
-        toast({
-          title: "Acceso denegado",
-          description: "Solo administradores pueden ingresar a GreenAirways",
-          variant: "destructive",
-        });
-        await signOut();
-        return;
-      }
-
-      setUserSystem(data);
-    } catch (error) {
-      console.error('Error fetching user system data:', error);
-      await signOut();
     }
-  };
+    setLoading(false);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Verificar credenciales directamente en usuario_sistema
+      const { data, error: usError } = await supabase
+        .from("usuario_sistema")
+        .select("id_usuario,nombre_usuario,rol,correo,contraseña")
+        .eq("correo", email)
+        .eq("contraseña", password)
+        .eq("rol", 1)
+        .maybeSingle();
 
-      if (error) {
-        return { error: error.message };
+      if (usError) {
+        console.error("Error en consulta:", usError);
+        return { error: "Error de conexión con la base de datos" };
       }
 
+      if (!data) {
+        return { error: "Credenciales incorrectas o acceso denegado. Solo administradores (rol 1) pueden ingresar." };
+      }
+
+      // Verificar que el rol sea 1 (admin)
+      if (data.rol !== 1) {
+        return { error: "Acceso denegado. Solo administradores (rol 1) pueden ingresar." };
+      }
+
+      // Crear objeto de usuario sin la contraseña
+      const userData: GAUser = {
+        id_usuario: data.id_usuario,
+        nombre_usuario: data.nombre_usuario,
+        rol: data.rol,
+        correo: data.correo
+      };
+
+      setUser(userData);
+      localStorage.setItem("ga_user", JSON.stringify(userData));
       return { error: null };
     } catch (error) {
-      return { error: 'Error inesperado al iniciar sesión' };
+      console.error("Error en autenticación:", error);
+      return { error: "Error interno del sistema" };
     }
   };
 
   const signOut = async () => {
-    setUserSystem(null);
-    await supabase.auth.signOut();
+    setUser(null);
+    localStorage.removeItem("ga_user");
   };
 
-  const value = {
-    user,
-    session,
-    userSystem,
-    loading,
-    signIn,
-    signOut,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);

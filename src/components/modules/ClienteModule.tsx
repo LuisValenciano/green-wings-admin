@@ -7,18 +7,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { avionService, type Avion } from '@/services/avion';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { clienteService, type Cliente } from '@/services/cliente';
+import { Plus, Edit, Trash2, Search, User } from 'lucide-react';
 
-export default function AvionModule() {
-  const [aviones, setAviones] = useState<Avion[]>([]);
+export default function ClienteModule() {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAvion, setEditingAvion] = useState<Avion | null>(null);
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [formData, setFormData] = useState({
-    modelo: '',
-    capacidad: ''
+    nombre: '',
+    identificacion: '',
+    telefono: '',
+    correo: ''
   });
   const [formLoading, setFormLoading] = useState(false);
   
@@ -26,18 +28,18 @@ export default function AvionModule() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadAviones();
+    loadClientes();
   }, []);
 
-  const loadAviones = async () => {
+  const loadClientes = async () => {
     try {
       setLoading(true);
-      const data = await avionService.list();
-      setAviones(data);
+      const data = await clienteService.list();
+      setClientes(data);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al cargar los aviones",
+        description: "Error al cargar los clientes",
         variant: "destructive",
       });
     } finally {
@@ -49,11 +51,31 @@ export default function AvionModule() {
     e.preventDefault();
     if (!user) return;
 
-    const capacidad = parseInt(formData.capacidad);
-    if (isNaN(capacidad) || capacidad <= 0) {
+    // Validaciones básicas
+    if (!formData.nombre.trim()) {
       toast({
         title: "Error",
-        description: "La capacidad debe ser un número mayor a 0",
+        description: "El nombre es obligatorio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.identificacion.trim()) {
+      toast({
+        title: "Error",
+        description: "La identificación es obligatoria",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar formato de correo
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.correo)) {
+      toast({
+        title: "Error",
+        description: "El formato del correo electrónico no es válido",
         variant: "destructive",
       });
       return;
@@ -62,35 +84,39 @@ export default function AvionModule() {
     try {
       setFormLoading(true);
       
-      if (editingAvion) {
-        await avionService.update(editingAvion.id_avion!, {
-          modelo: formData.modelo,
-          capacidad
+      if (editingCliente) {
+        await clienteService.update(editingCliente.id_cliente!, {
+          nombre: formData.nombre.trim(),
+          identificacion: formData.identificacion.trim(),
+          telefono: formData.telefono.trim(),
+          correo: formData.correo.trim()
         }, user.id_usuario);
         
         toast({
           title: "Éxito",
-          description: "Avión actualizado correctamente",
+          description: "Cliente actualizado correctamente",
         });
       } else {
-        await avionService.create({
-          modelo: formData.modelo,
-          capacidad
+        await clienteService.create({
+          nombre: formData.nombre.trim(),
+          identificacion: formData.identificacion.trim(),
+          telefono: formData.telefono.trim(),
+          correo: formData.correo.trim()
         }, user.id_usuario);
         
         toast({
           title: "Éxito",
-          description: "Avión creado correctamente",
+          description: "Cliente creado correctamente",
         });
       }
 
-      await loadAviones();
+      await loadClientes();
       resetForm();
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Error al guardar el avión",
+        description: error.message || "Error al guardar el cliente",
         variant: "destructive",
       });
     } finally {
@@ -98,36 +124,38 @@ export default function AvionModule() {
     }
   };
 
-  const handleDelete = async (avion: Avion) => {
+  const handleDelete = async (cliente: Cliente) => {
     if (!user) return;
 
     try {
-      await avionService.remove(avion.id_avion!, user.id_usuario);
-      await loadAviones();
+      await clienteService.remove(cliente.id_cliente!, user.id_usuario);
+      await loadClientes();
       
       toast({
         title: "Éxito",
-        description: "Avión eliminado correctamente",
+        description: "Cliente eliminado correctamente",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al eliminar el avión",
+        description: "Error al eliminar el cliente",
         variant: "destructive",
       });
     }
   };
 
   const resetForm = () => {
-    setFormData({ modelo: '', capacidad: '' });
-    setEditingAvion(null);
+    setFormData({ nombre: '', identificacion: '', telefono: '', correo: '' });
+    setEditingCliente(null);
   };
 
-  const openEditDialog = (avion: Avion) => {
-    setEditingAvion(avion);
+  const openEditDialog = (cliente: Cliente) => {
+    setEditingCliente(cliente);
     setFormData({
-      modelo: avion.modelo,
-      capacidad: avion.capacidad.toString()
+      nombre: cliente.nombre,
+      identificacion: cliente.identificacion,
+      telefono: cliente.telefono,
+      correo: cliente.correo
     });
     setIsDialogOpen(true);
   };
@@ -137,9 +165,10 @@ export default function AvionModule() {
     setIsDialogOpen(true);
   };
 
-  const filteredAviones = aviones.filter(avion =>
-    avion.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avion.capacidad.toString().includes(searchTerm)
+  const filteredClientes = clientes.filter(cliente =>
+    cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.identificacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.correo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -154,9 +183,9 @@ export default function AvionModule() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Aviones</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Clientes</h1>
           <p className="text-gray-600">
-            Administra la flota de aviones de GreenAirways
+            Administra la información de los clientes de GreenAirways
           </p>
         </div>
         
@@ -164,37 +193,59 @@ export default function AvionModule() {
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog} className="bg-green-600 hover:bg-green-700">
               <Plus className="w-4 h-4 mr-2" />
-              Nuevo Avión
+              Nuevo Cliente
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingAvion ? 'Editar Avión' : 'Nuevo Avión'}
+                {editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="modelo" className="text-gray-700">Modelo</Label>
+                <Label htmlFor="nombre" className="text-gray-700">Nombre completo *</Label>
                 <Input
-                  id="modelo"
-                  value={formData.modelo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, modelo: e.target.value }))}
-                  placeholder="Ej: Boeing 737"
+                  id="nombre"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                  placeholder="Ej: Juan Pérez"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="capacidad" className="text-gray-700">Capacidad (pasajeros)</Label>
+                <Label htmlFor="identificacion" className="text-gray-700">Identificación *</Label>
                 <Input
-                  id="capacidad"
-                  type="number"
-                  min="1"
-                  value={formData.capacidad}
-                  onChange={(e) => setFormData(prev => ({ ...prev, capacidad: e.target.value }))}
-                  placeholder="Ej: 180"
+                  id="identificacion"
+                  value={formData.identificacion}
+                  onChange={(e) => setFormData(prev => ({ ...prev, identificacion: e.target.value }))}
+                  placeholder="Ej: 123456789"
+                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefono" className="text-gray-700">Teléfono</Label>
+                <Input
+                  id="telefono"
+                  value={formData.telefono}
+                  onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value }))}
+                  placeholder="Ej: +506 8888-8888"
+                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="correo" className="text-gray-700">Correo electrónico *</Label>
+                <Input
+                  id="correo"
+                  type="email"
+                  value={formData.correo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, correo: e.target.value }))}
+                  placeholder="Ej: juan@email.com"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   required
                 />
@@ -210,7 +261,7 @@ export default function AvionModule() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={formLoading} className="bg-green-600 hover:bg-green-700">
-                  {formLoading ? 'Guardando...' : (editingAvion ? 'Actualizar' : 'Crear')}
+                  {formLoading ? 'Guardando...' : (editingCliente ? 'Actualizar' : 'Crear')}
                 </Button>
               </div>
             </form>
@@ -221,13 +272,13 @@ export default function AvionModule() {
       {/* Búsqueda */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-gray-900">Buscar Aviones</CardTitle>
+          <CardTitle className="text-gray-900">Buscar Clientes</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Buscar por modelo o capacidad..."
+              placeholder="Buscar por nombre, identificación o correo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
@@ -236,15 +287,15 @@ export default function AvionModule() {
         </CardContent>
       </Card>
 
-      {/* Lista de aviones */}
+      {/* Lista de clientes */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-gray-900">Lista de Aviones ({filteredAviones.length})</CardTitle>
+          <CardTitle className="text-gray-900">Lista de Clientes ({filteredClientes.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredAviones.length === 0 ? (
+          {filteredClientes.length === 0 ? (
             <p className="text-center text-gray-500 py-8">
-              {searchTerm ? 'No se encontraron aviones con ese criterio' : 'No hay aviones registrados'}
+              {searchTerm ? 'No se encontraron clientes con ese criterio' : 'No hay clientes registrados'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -252,23 +303,27 @@ export default function AvionModule() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-gray-700 font-medium">ID</th>
-                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Modelo</th>
-                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Capacidad</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Nombre</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Identificación</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Teléfono</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Correo</th>
                     <th className="text-right py-3 px-4 text-gray-700 font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAviones.map((avion) => (
-                    <tr key={avion.id_avion} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 font-mono text-gray-600">{avion.id_avion}</td>
-                      <td className="py-3 px-4 font-medium text-gray-900">{avion.modelo}</td>
-                      <td className="py-3 px-4 text-gray-700">{avion.capacidad} pasajeros</td>
+                  {filteredClientes.map((cliente) => (
+                    <tr key={cliente.id_cliente} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-mono text-gray-600">{cliente.id_cliente}</td>
+                      <td className="py-3 px-4 font-medium text-gray-900">{cliente.nombre}</td>
+                      <td className="py-3 px-4 text-gray-700">{cliente.identificacion}</td>
+                      <td className="py-3 px-4 text-gray-700">{cliente.telefono || '-'}</td>
+                      <td className="py-3 px-4 text-gray-700">{cliente.correo}</td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openEditDialog(avion)}
+                            onClick={() => openEditDialog(cliente)}
                             className="border-gray-300 hover:bg-green-50 hover:border-green-300"
                           >
                             <Edit className="w-4 h-4" />
@@ -282,15 +337,15 @@ export default function AvionModule() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar avión?</AlertDialogTitle>
+                                <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta acción no se puede deshacer. Se eliminará permanentemente el avión "{avion.modelo}".
+                                  Esta acción no se puede deshacer. Se eliminará permanentemente el cliente "{cliente.nombre}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDelete(avion)}
+                                  onClick={() => handleDelete(cliente)}
                                   className="bg-red-600 text-white hover:bg-red-700"
                                 >
                                   Eliminar

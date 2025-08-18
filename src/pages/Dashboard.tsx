@@ -1,218 +1,214 @@
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, Plane, Users, Calendar, UserCheck } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Plane, 
+  Users, 
+  UserCheck, 
+  Calendar, 
+  MapPin, 
+  FileText,
+  TrendingUp,
+  Clock
+} from 'lucide-react';
 
 interface DashboardStats {
   vuelos: number;
-  reservas: number;
   clientes: number;
-  aviones: number;
-}
-
-interface ProximoVuelo {
-  id_vuelo: number;
-  fecha_salida: string;
-  hora_salida: string;
-  precio: number;
-  ruta?: {
-    origen: string;
-    destino: string;
-  };
-  avion?: {
-    modelo: string;
-  };
+  pasajeros: number;
+  reservas: number;
+  rutas: number;
+  logs: number;
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     vuelos: 0,
-    reservas: 0,
     clientes: 0,
-    aviones: 0
+    pasajeros: 0,
+    reservas: 0,
+    rutas: 0,
+    logs: 0
   });
-  const [proximosVuelos, setProximosVuelos] = useState<ProximoVuelo[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
+    const fetchStats = async () => {
+      try {
+        // Obtener estadísticas de todas las tablas
+        const [
+          { count: vuelos },
+          { count: clientes },
+          { count: pasajeros },
+          { count: reservas },
+          { count: rutas },
+          { count: logs }
+        ] = await Promise.all([
+          supabase.from('vuelo').select('*', { count: 'exact', head: true }),
+          supabase.from('cliente').select('*', { count: 'exact', head: true }),
+          supabase.from('pasajeros').select('*', { count: 'exact', head: true }),
+          supabase.from('reserva').select('*', { count: 'exact', head: true }),
+          supabase.from('ruta').select('*', { count: 'exact', head: true }),
+          supabase.from('log').select('*', { count: 'exact', head: true })
+        ]);
+
+        setStats({
+          vuelos: vuelos || 0,
+          clientes: clientes || 0,
+          pasajeros: pasajeros || 0,
+          reservas: reservas || 0,
+          rutas: rutas || 0,
+          logs: logs || 0
+        });
+      } catch (error) {
+        console.error('Error al cargar estadísticas:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
   }, []);
 
-  const loadDashboardData = async () => {
-    try {
-      // Obtener estadísticas
-      const [vuelosRes, reservasRes, clientesRes, avionesRes] = await Promise.all([
-        supabase.from('vuelo').select('id_vuelo', { count: 'exact', head: true }),
-        supabase.from('reserva').select('id_reserva', { count: 'exact', head: true }),
-        supabase.from('cliente').select('id_cliente', { count: 'exact', head: true }),
-        supabase.from('avion').select('id_avion', { count: 'exact', head: true })
-      ]);
-
-      setStats({
-        vuelos: vuelosRes.count || 0,
-        reservas: reservasRes.count || 0,
-        clientes: clientesRes.count || 0,
-        aviones: avionesRes.count || 0
-      });
-
-      // Obtener próximos vuelos
-      const { data: vuelos } = await supabase
-        .from('vuelo')
-        .select(`
-          id_vuelo,
-          fecha_salida,
-          hora_salida,
-          precio,
-          ruta:ruta!inner(origen, destino),
-          avion:avion!inner(modelo)
-        `)
-        .gte('fecha_salida', new Date().toISOString().split('T')[0])
-        .order('fecha_salida', { ascending: true })
-        .order('hora_salida', { ascending: true })
-        .limit(10);
-
-      setProximosVuelos(vuelos || []);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
+  const statCards = [
+    {
+      title: 'Vuelos',
+      value: stats.vuelos,
+      icon: Plane,
+      color: 'bg-blue-500',
+      description: 'Vuelos programados'
+    },
+    {
+      title: 'Clientes',
+      value: stats.clientes,
+      icon: Users,
+      color: 'bg-green-500',
+      description: 'Clientes registrados'
+    },
+    {
+      title: 'Pasajeros',
+      value: stats.pasajeros,
+      icon: UserCheck,
+      color: 'bg-purple-500',
+      description: 'Pasajeros totales'
+    },
+    {
+      title: 'Reservas',
+      value: stats.reservas,
+      icon: Calendar,
+      color: 'bg-orange-500',
+      description: 'Reservas activas'
+    },
+    {
+      title: 'Rutas',
+      value: stats.rutas,
+      icon: MapPin,
+      color: 'bg-red-500',
+      description: 'Rutas disponibles'
+    },
+    {
+      title: 'Logs',
+      value: stats.logs,
+      icon: FileText,
+      color: 'bg-gray-500',
+      description: 'Registros del sistema'
     }
-  };
-
-  const filteredVuelos = proximosVuelos.filter(vuelo => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      vuelo.ruta?.origen.toLowerCase().includes(searchLower) ||
-      vuelo.ruta?.destino.toLowerCase().includes(searchLower)
-    );
-  });
+  ];
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Cargando estadísticas...</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Resumen general del sistema GreenAirways
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-2">Bienvenido al panel administrativo de GreenAirways</p>
       </div>
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Vuelos</CardTitle>
-            <Plane className="h-4 w-4 text-muted-foreground" />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title} className="border-gray-200 hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  {stat.title}
+                </CardTitle>
+                <div className={`p-2 rounded-full ${stat.color}`}>
+                  <Icon className="w-4 h-4 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="border-gray-200">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Acciones Rápidas</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.vuelos}</div>
+          <CardContent className="space-y-3">
+            <div className="flex items-center p-3 bg-green-50 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-green-600 mr-3" />
+              <div>
+                <p className="font-medium text-gray-900">Gestionar Vuelos</p>
+                <p className="text-sm text-gray-600">Programar y administrar vuelos</p>
+              </div>
+            </div>
+            <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+              <Users className="w-5 h-5 text-blue-600 mr-3" />
+              <div>
+                <p className="font-medium text-gray-900">Clientes</p>
+                <p className="text-sm text-gray-600">Administrar información de clientes</p>
+              </div>
+            </div>
+            <div className="flex items-center p-3 bg-purple-50 rounded-lg">
+              <Calendar className="w-5 h-5 text-purple-600 mr-3" />
+              <div>
+                <p className="font-medium text-gray-900">Reservas</p>
+                <p className="text-sm text-gray-600">Gestionar reservas de vuelos</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Reservas</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-gray-200">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Actividad Reciente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.reservas}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clientes</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.clientes}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Aviones</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.aviones}</div>
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <Clock className="w-4 h-4 text-gray-400 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Sistema iniciado</p>
+                  <p className="text-xs text-gray-500">Hace unos momentos</p>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <FileText className="w-4 h-4 text-gray-400 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Logs del sistema</p>
+                  <p className="text-xs text-gray-500">Registros de actividad</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Próximos vuelos */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Próximos Vuelos</CardTitle>
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Buscar por origen o destino..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setSearchTerm('')}
-              disabled={!searchTerm}
-            >
-              Limpiar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredVuelos.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              {searchTerm ? 'No se encontraron vuelos con ese criterio' : 'No hay vuelos programados'}
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">Fecha</th>
-                    <th className="text-left py-3 px-4">Hora</th>
-                    <th className="text-left py-3 px-4">Ruta</th>
-                    <th className="text-left py-3 px-4">Avión</th>
-                    <th className="text-right py-3 px-4">Precio</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredVuelos.map((vuelo) => (
-                    <tr key={vuelo.id_vuelo} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4">
-                        {new Date(vuelo.fecha_salida).toLocaleDateString('es-CR')}
-                      </td>
-                      <td className="py-3 px-4">{vuelo.hora_salida}</td>
-                      <td className="py-3 px-4">
-                        {vuelo.ruta?.origen} → {vuelo.ruta?.destino}
-                      </td>
-                      <td className="py-3 px-4">{vuelo.avion?.modelo}</td>
-                      <td className="py-3 px-4 text-right font-medium">
-                        ₡{vuelo.precio.toLocaleString('es-CR')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

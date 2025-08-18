@@ -7,18 +7,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { avionService, type Avion } from '@/services/avion';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { rutaService, type Ruta } from '@/services/ruta';
+import { Plus, Edit, Trash2, Search, MapPin } from 'lucide-react';
 
-export default function AvionModule() {
-  const [aviones, setAviones] = useState<Avion[]>([]);
+export default function RutaModule() {
+  const [rutas, setRutas] = useState<Ruta[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAvion, setEditingAvion] = useState<Avion | null>(null);
+  const [editingRuta, setEditingRuta] = useState<Ruta | null>(null);
   const [formData, setFormData] = useState({
-    modelo: '',
-    capacidad: ''
+    origen: '',
+    destino: ''
   });
   const [formLoading, setFormLoading] = useState(false);
   
@@ -26,18 +26,18 @@ export default function AvionModule() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadAviones();
+    loadRutas();
   }, []);
 
-  const loadAviones = async () => {
+  const loadRutas = async () => {
     try {
       setLoading(true);
-      const data = await avionService.list();
-      setAviones(data);
+      const data = await rutaService.list();
+      setRutas(data);
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al cargar los aviones",
+        description: "Error al cargar las rutas",
         variant: "destructive",
       });
     } finally {
@@ -49,11 +49,28 @@ export default function AvionModule() {
     e.preventDefault();
     if (!user) return;
 
-    const capacidad = parseInt(formData.capacidad);
-    if (isNaN(capacidad) || capacidad <= 0) {
+    if (!formData.origen.trim()) {
       toast({
         title: "Error",
-        description: "La capacidad debe ser un número mayor a 0",
+        description: "El origen es obligatorio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.destino.trim()) {
+      toast({
+        title: "Error",
+        description: "El destino es obligatorio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.origen.trim().toLowerCase() === formData.destino.trim().toLowerCase()) {
+      toast({
+        title: "Error",
+        description: "El origen y destino no pueden ser iguales",
         variant: "destructive",
       });
       return;
@@ -62,35 +79,35 @@ export default function AvionModule() {
     try {
       setFormLoading(true);
       
-      if (editingAvion) {
-        await avionService.update(editingAvion.id_avion!, {
-          modelo: formData.modelo,
-          capacidad
+      if (editingRuta) {
+        await rutaService.update(editingRuta.id_ruta!, {
+          origen: formData.origen.trim(),
+          destino: formData.destino.trim()
         }, user.id_usuario);
         
         toast({
           title: "Éxito",
-          description: "Avión actualizado correctamente",
+          description: "Ruta actualizada correctamente",
         });
       } else {
-        await avionService.create({
-          modelo: formData.modelo,
-          capacidad
+        await rutaService.create({
+          origen: formData.origen.trim(),
+          destino: formData.destino.trim()
         }, user.id_usuario);
         
         toast({
           title: "Éxito",
-          description: "Avión creado correctamente",
+          description: "Ruta creada correctamente",
         });
       }
 
-      await loadAviones();
+      await loadRutas();
       resetForm();
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Error al guardar el avión",
+        description: error.message || "Error al guardar la ruta",
         variant: "destructive",
       });
     } finally {
@@ -98,36 +115,36 @@ export default function AvionModule() {
     }
   };
 
-  const handleDelete = async (avion: Avion) => {
+  const handleDelete = async (ruta: Ruta) => {
     if (!user) return;
 
     try {
-      await avionService.remove(avion.id_avion!, user.id_usuario);
-      await loadAviones();
+      await rutaService.remove(ruta.id_ruta!, user.id_usuario);
+      await loadRutas();
       
       toast({
         title: "Éxito",
-        description: "Avión eliminado correctamente",
+        description: "Ruta eliminada correctamente",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Error al eliminar el avión",
+        description: "Error al eliminar la ruta",
         variant: "destructive",
       });
     }
   };
 
   const resetForm = () => {
-    setFormData({ modelo: '', capacidad: '' });
-    setEditingAvion(null);
+    setFormData({ origen: '', destino: '' });
+    setEditingRuta(null);
   };
 
-  const openEditDialog = (avion: Avion) => {
-    setEditingAvion(avion);
+  const openEditDialog = (ruta: Ruta) => {
+    setEditingRuta(ruta);
     setFormData({
-      modelo: avion.modelo,
-      capacidad: avion.capacidad.toString()
+      origen: ruta.origen,
+      destino: ruta.destino
     });
     setIsDialogOpen(true);
   };
@@ -137,9 +154,9 @@ export default function AvionModule() {
     setIsDialogOpen(true);
   };
 
-  const filteredAviones = aviones.filter(avion =>
-    avion.modelo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avion.capacidad.toString().includes(searchTerm)
+  const filteredRutas = rutas.filter(ruta =>
+    ruta.origen.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ruta.destino.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -154,9 +171,9 @@ export default function AvionModule() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestión de Aviones</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Gestión de Rutas</h1>
           <p className="text-gray-600">
-            Administra la flota de aviones de GreenAirways
+            Administra las rutas de vuelo de GreenAirways
           </p>
         </div>
         
@@ -164,37 +181,35 @@ export default function AvionModule() {
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog} className="bg-green-600 hover:bg-green-700">
               <Plus className="w-4 h-4 mr-2" />
-              Nuevo Avión
+              Nueva Ruta
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingAvion ? 'Editar Avión' : 'Nuevo Avión'}
+                {editingRuta ? 'Editar Ruta' : 'Nueva Ruta'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="modelo" className="text-gray-700">Modelo</Label>
+                <Label htmlFor="origen" className="text-gray-700">Origen *</Label>
                 <Input
-                  id="modelo"
-                  value={formData.modelo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, modelo: e.target.value }))}
-                  placeholder="Ej: Boeing 737"
+                  id="origen"
+                  value={formData.origen}
+                  onChange={(e) => setFormData(prev => ({ ...prev, origen: e.target.value }))}
+                  placeholder="Ej: San José"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="capacidad" className="text-gray-700">Capacidad (pasajeros)</Label>
+                <Label htmlFor="destino" className="text-gray-700">Destino *</Label>
                 <Input
-                  id="capacidad"
-                  type="number"
-                  min="1"
-                  value={formData.capacidad}
-                  onChange={(e) => setFormData(prev => ({ ...prev, capacidad: e.target.value }))}
-                  placeholder="Ej: 180"
+                  id="destino"
+                  value={formData.destino}
+                  onChange={(e) => setFormData(prev => ({ ...prev, destino: e.target.value }))}
+                  placeholder="Ej: Liberia"
                   className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   required
                 />
@@ -210,7 +225,7 @@ export default function AvionModule() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={formLoading} className="bg-green-600 hover:bg-green-700">
-                  {formLoading ? 'Guardando...' : (editingAvion ? 'Actualizar' : 'Crear')}
+                  {formLoading ? 'Guardando...' : (editingRuta ? 'Actualizar' : 'Crear')}
                 </Button>
               </div>
             </form>
@@ -221,13 +236,13 @@ export default function AvionModule() {
       {/* Búsqueda */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-gray-900">Buscar Aviones</CardTitle>
+          <CardTitle className="text-gray-900">Buscar Rutas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Buscar por modelo o capacidad..."
+              placeholder="Buscar por origen o destino..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 border-gray-300 focus:border-green-500 focus:ring-green-500"
@@ -236,15 +251,15 @@ export default function AvionModule() {
         </CardContent>
       </Card>
 
-      {/* Lista de aviones */}
+      {/* Lista de rutas */}
       <Card className="border-gray-200">
         <CardHeader>
-          <CardTitle className="text-gray-900">Lista de Aviones ({filteredAviones.length})</CardTitle>
+          <CardTitle className="text-gray-900">Lista de Rutas ({filteredRutas.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredAviones.length === 0 ? (
+          {filteredRutas.length === 0 ? (
             <p className="text-center text-gray-500 py-8">
-              {searchTerm ? 'No se encontraron aviones con ese criterio' : 'No hay aviones registrados'}
+              {searchTerm ? 'No se encontraron rutas con ese criterio' : 'No hay rutas registradas'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -252,23 +267,31 @@ export default function AvionModule() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-gray-700 font-medium">ID</th>
-                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Modelo</th>
-                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Capacidad</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Origen</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Destino</th>
+                    <th className="text-left py-3 px-4 text-gray-700 font-medium">Ruta</th>
                     <th className="text-right py-3 px-4 text-gray-700 font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAviones.map((avion) => (
-                    <tr key={avion.id_avion} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4 font-mono text-gray-600">{avion.id_avion}</td>
-                      <td className="py-3 px-4 font-medium text-gray-900">{avion.modelo}</td>
-                      <td className="py-3 px-4 text-gray-700">{avion.capacidad} pasajeros</td>
+                  {filteredRutas.map((ruta) => (
+                    <tr key={ruta.id_ruta} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-mono text-gray-600">{ruta.id_ruta}</td>
+                      <td className="py-3 px-4 font-medium text-gray-900">{ruta.origen}</td>
+                      <td className="py-3 px-4 font-medium text-gray-900">{ruta.destino}</td>
+                      <td className="py-3 px-4 text-gray-700">
+                        <span className="flex items-center">
+                          <span>{ruta.origen}</span>
+                          <MapPin className="w-4 h-4 mx-2 text-green-600" />
+                          <span>{ruta.destino}</span>
+                        </span>
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openEditDialog(avion)}
+                            onClick={() => openEditDialog(ruta)}
                             className="border-gray-300 hover:bg-green-50 hover:border-green-300"
                           >
                             <Edit className="w-4 h-4" />
@@ -282,15 +305,15 @@ export default function AvionModule() {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar avión?</AlertDialogTitle>
+                                <AlertDialogTitle>¿Eliminar ruta?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta acción no se puede deshacer. Se eliminará permanentemente el avión "{avion.modelo}".
+                                  Esta acción no se puede deshacer. Se eliminará permanentemente la ruta "{ruta.origen} → {ruta.destino}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDelete(avion)}
+                                  onClick={() => handleDelete(ruta)}
                                   className="bg-red-600 text-white hover:bg-red-700"
                                 >
                                   Eliminar

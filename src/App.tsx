@@ -9,6 +9,14 @@ import Layout from "@/components/Layout";
 import Login from "@/components/Login";
 import Dashboard from "@/pages/Dashboard";
 import AvionModule from "@/components/modules/AvionModule";
+import ClienteModule from "@/components/modules/ClienteModule";
+import RolesModule from "@/components/modules/RolesModule";
+import RutaModule from "@/components/modules/RutaModule";
+import VueloModule from "@/components/modules/VueloModule";
+import ReservaModule from "@/components/modules/ReservaModule";
+import PasajerosModule from "@/components/modules/PasajerosModule";
+import UsuarioSistemaModule from "@/components/modules/UsuarioSistemaModule";
+import LogModule from "@/components/modules/LogModule";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,14 +38,14 @@ const App = () => (
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="avion" element={<AvionModule />} />
-              <Route path="cliente" element={<div>Módulo Cliente - En desarrollo</div>} />
-              <Route path="pasajeros" element={<div>Módulo Pasajeros - En desarrollo</div>} />
-              <Route path="reserva" element={<div>Módulo Reserva - En desarrollo</div>} />
-              <Route path="roles" element={<div>Módulo Roles - En desarrollo</div>} />
-              <Route path="ruta" element={<div>Módulo Ruta - En desarrollo</div>} />
-              <Route path="usuario-sistema" element={<div>Módulo Usuario Sistema - En desarrollo</div>} />
-              <Route path="vuelo" element={<div>Módulo Vuelo - En desarrollo</div>} />
-              <Route path="log" element={<div>Módulo Log - En desarrollo</div>} />
+              <Route path="cliente" element={<ClienteModule />} />
+              <Route path="pasajeros" element={<PasajerosModule />} />
+              <Route path="reserva" element={<ReservaModule />} />
+              <Route path="roles" element={<RolesModule />} />
+              <Route path="ruta" element={<RutaModule />} />
+              <Route path="usuario-sistema" element={<UsuarioSistemaModule />} />
+              <Route path="vuelo" element={<VueloModule />} />
+              <Route path="log" element={<LogModule />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

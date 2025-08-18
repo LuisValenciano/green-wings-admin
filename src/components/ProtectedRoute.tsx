@@ -6,20 +6,20 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { loading, userSystem } = useAuth();
+  const { loading, user } = useAuth();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Verificando acceso...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Verificando acceso...</p>
         </div>
       </div>
     );
   }
 
-  if (!userSystem) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 

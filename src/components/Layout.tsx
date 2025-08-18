@@ -32,11 +32,11 @@ const navigation = [
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { userSystem, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile menu overlay */}
       {sidebarOpen && (
         <div 
@@ -46,17 +46,17 @@ export default function Layout() {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-border">
+          <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
             <div className="flex items-center">
-              <div className="bg-primary p-2 rounded-full">
-                <Plane className="w-6 h-6 text-primary-foreground" />
+              <div className="bg-green-600 p-2 rounded-full">
+                <Plane className="w-6 h-6 text-white" />
               </div>
-              <span className="ml-3 text-xl font-bold text-primary">GreenAirways</span>
+              <span className="ml-3 text-xl font-bold text-green-600">GreenAirways</span>
             </div>
             <Button
               variant="ghost"
@@ -80,8 +80,8 @@ export default function Layout() {
                   to={item.href}
                   className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      ? 'bg-green-600 text-white'
+                      : 'text-gray-600 hover:bg-green-50 hover:text-green-600'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -93,13 +93,13 @@ export default function Layout() {
           </nav>
 
           {/* User info and logout */}
-          <div className="border-t border-border p-4">
+          <div className="border-t border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {userSystem?.nombre_usuario}
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.nombre_usuario}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-xs text-gray-500 truncate">
                   Administrador
                 </p>
               </div>
@@ -107,7 +107,7 @@ export default function Layout() {
                 variant="ghost"
                 size="icon"
                 onClick={signOut}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-gray-500 hover:text-red-600"
                 title="Cerrar sesión"
               >
                 <LogOut className="w-5 h-5" />
@@ -120,7 +120,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <div className="sticky top-0 z-40 h-16 bg-background border-b border-border">
+        <div className="sticky top-0 z-40 h-16 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between h-full px-4">
             <Button
               variant="ghost"
@@ -132,20 +132,20 @@ export default function Layout() {
             </Button>
             
             <div className="hidden lg:flex items-center">
-              <h1 className="text-lg font-semibold text-foreground">
+              <h1 className="text-lg font-semibold text-gray-900">
                 Panel Administrativo
               </h1>
             </div>
 
             <div className="flex items-center space-x-2">
-              <span className="hidden sm:inline text-sm text-muted-foreground">
-                {userSystem?.nombre_usuario}
+              <span className="hidden sm:inline text-sm text-gray-600">
+                {user?.nombre_usuario}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={signOut}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-gray-600 hover:text-red-600"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Cerrar sesión</span>
